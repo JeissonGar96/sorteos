@@ -206,6 +206,11 @@ tbody tr.ex td{opacity:.4;}tbody tr.ex .uname{text-decoration:line-through;}
 .cards-wrap{position:relative;height:130px;display:flex;align-items:center;justify-content:center;}
 .card-item{position:absolute;width:160px;padding:16px;border-radius:12px;background:var(--surface2);border:1.5px solid var(--border);text-align:center;font-weight:700;font-size:14px;box-shadow:var(--shadow-lg);transition:transform .4s ease,opacity .3s;}
 .card-item.winner-card-anim{background:linear-gradient(135deg,var(--accent),#a78bfa);color:#fff;border-color:transparent;z-index:10;}
+.winners-list{display:flex;flex-direction:column;gap:7px;margin-top:12px;text-align:left;}
+.winner-row{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.12);border-radius:8px;padding:8px 12px;}
+.winner-pos{font-family:'JetBrains Mono',monospace;font-size:12px;color:rgba(255,255,255,.7);font-weight:700;width:20px;flex-shrink:0;}
+.winner-av{width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#fff;flex-shrink:0;}
+.winner-un{font-weight:700;font-size:13px;color:#fff;}
 </style>
 </head>
 <body>
@@ -313,8 +318,12 @@ tbody tr.ex td{opacity:.4;}tbody tr.ex .uname{text-decoration:line-through;}
     <div class="sb-s">
       <div class="slbl">🏆 Sorteo</div>
       <div class="tr">
-        <div class="tl"><div class="tn">Suplentes</div></div>
-        <input type="number" id="nsup" value="3" min="0" max="20" style="width:60px;text-align:center;">
+        <div class="tl"><div class="tn">Ganadores</div><div class="td">Cuántos ganadores sortear</div></div>
+        <input type="number" id="nwin" value="1" min="1" max="50" style="width:60px;text-align:center;">
+      </div>
+      <div class="tr">
+        <div class="tl"><div class="tn">Suplentes</div><div class="td">Por cada ganador</div></div>
+        <input type="number" id="nsup" value="1" min="0" max="10" style="width:60px;text-align:center;">
       </div>
       <div class="tr" style="flex-direction:column;align-items:flex-start;gap:8px;padding-bottom:12px;">
         <div class="tn">Animación</div>
@@ -420,7 +429,7 @@ tbody tr.ex td{opacity:.4;}tbody tr.ex .uname{text-decoration:line-through;}
 </div>
 
 <script>
-let parts=[],filt=[],allRows=[],kws=[],src='ig';
+let parts=[],filt=[],allRows=[],kws=[],src='ig',filtersApplied=false;
 let hist=JSON.parse(localStorage.getItem('ks-h')||'[]');
 let theme=localStorage.getItem('ks-theme')||'light';
 document.documentElement.setAttribute('data-theme',theme);
@@ -497,8 +506,8 @@ function parse(txt,fname){
   const seen=new Set();p=p.filter(x=>{if(seen.has(x.username)){return false;}seen.add(x.username);return true;});
 
   if(!p.length){notif('No se encontraron participantes — revisa el formato del CSV','err');return;}
-  parts=p;applyFilters();
-  notif(`✓ ${p.length} participantes cargados`,'ok');
+  parts=p;
+  notif(`✓ ${p.length} participantes cargados — presiona Aplicar filtros`,'ok');
   document.getElementById('dz-t').innerHTML=`✅ <strong>${fname}</strong> (${p.length})`;
 }
 
@@ -524,9 +533,7 @@ function loadManual(){
   const t=document.getElementById('mlist').value.trim();
   if(!t){notif('Escribe algunos nombres','err');return;}
   parts=t.split('\n').map(l=>l.trim()).filter(Boolean).map(l=>mk(l.replace(/^@/,''),'',''));
-  filt=parts.map(p=>({...p}));updStats();renderTable();
-  
-  notif(`✓ ${parts.length} participantes cargados`,'ok');
+  notif(`✓ ${parts.length} participantes cargados — presiona Aplicar filtros`,'ok');
 }
 
 function togKw(){document.getElementById('kw-b').classList.toggle('on',document.getElementById('f-kw').checked);}
@@ -563,6 +570,7 @@ function applyFilters(){
   });
   // filt = solo válidos (para el sorteo)
   filt=allRows.filter(p=>!p.excluded);
+  filtersApplied=true;
   updStats();renderTable();
   if(filt.length>0)collapseSb(src==='ig'?'Instagram CSV':'Lista manual',filt.length);
 }
@@ -580,8 +588,12 @@ function renderTable(){
   const fwOn=src==='ig'&&document.getElementById('f-fw').checked;
   const hasCmt=filt.some(p=>p.comment);
   // Solo mostramos los válidos en la tabla
+  if(!filtersApplied){
+    document.getElementById('tw').innerHTML=`<div class="empty"><div class="ei">⚡</div><div class="et">Listo para filtrar</div><div class="ed">Carga tus datos y presiona <strong>Aplicar filtros</strong> para ver los participantes.</div></div>`;
+    return;
+  }
   if(!filt.length){
-    document.getElementById('tw').innerHTML=`<div class="empty"><div class="ei">🎯</div><div class="et">Sin participantes válidos</div><div class="ed">Todos los comentarios fueron filtrados. Ajusta los filtros o carga una nueva lista.</div></div>`;
+    document.getElementById('tw').innerHTML=`<div class="empty"><div class="ei">🎯</div><div class="et">Sin participantes válidos</div><div class="ed">Todos fueron filtrados. Ajusta los filtros o carga una nueva lista.</div></div>`;
     return;
   }
   const rows=filt.filter(p=>!q||p.username.toLowerCase().includes(q)||(p.comment||'').toLowerCase().includes(q));
@@ -615,7 +627,7 @@ function setFw(i,v){
   if(pu)pu.followsAll=filt[i].followsAll;
   applyFilters();
 }
-function clearAll(){parts=[];filt=[];allRows=[];kws=[];renderKws();expandSb();document.getElementById('fi').value='';document.getElementById('dz-t').innerHTML='Sube tu CSV o <strong>haz clic</strong>';document.getElementById('paste').value='';document.getElementById('mlist').value='';updStats();renderTable();document.getElementById('btn-s').disabled=true;notif('Lista limpiada','ok');}
+function clearAll(){parts=[];filt=[];allRows=[];kws=[];filtersApplied=false;renderKws();expandSb();document.getElementById('fi').value='';document.getElementById('dz-t').innerHTML='Sube tu CSV o <strong>haz clic</strong>';document.getElementById('paste').value='';document.getElementById('mlist').value='';updStats();renderTable();document.getElementById('btn-s').disabled=true;notif('Lista limpiada','ok');}
 
 
 let selectedAnim='drum';
@@ -628,9 +640,12 @@ function selectAnim(el){
 function doSorteo(){
   const pool=filt.filter(p=>!p.excluded);
   if(!pool.length){notif('Sin participantes válidos','err');return;}
+  const nwin=parseInt(document.getElementById('nwin').value)||1;
   const ns=parseInt(document.getElementById('nsup').value)||0;
   const sh=[...pool].sort(()=>Math.random()-.5);
-  const win=sh[0],sup=sh.slice(1,1+ns);
+  const winners=sh.slice(0,nwin);
+  const win=winners[0];
+  const sup=sh.slice(nwin,nwin+ns*nwin);
 
   // Reset modal
   document.getElementById('ov').classList.add('open');
@@ -643,7 +658,7 @@ function doSorteo(){
   document.getElementById('pp').textContent='0%';
   document.getElementById('dr').innerHTML='';
 
-  const animMap={drum:drumAnim,glitch:glitchAnim,spotlight:spotlightAnim,wheel:wheelAnim,cards:cardsAnim,none:()=>{document.getElementById('sp').style.display='none';showWin(win,sup,pool.length);}};
+  const animMap={drum:drumAnim,glitch:glitchAnim,spotlight:spotlightAnim,wheel:wheelAnim,cards:cardsAnim,none:()=>{document.getElementById('sp').style.display='none';showWin(win,sup,pool.length,winners);}};
   (animMap[selectedAnim]||drumAnim)(pool,win,sup);
 }
 
@@ -658,7 +673,7 @@ function drumAnim(pool,win,sup){
     const ri=Math.floor(Math.random()*pool.length);
     dr.innerHTML=[pool[(ri-1+pool.length)%pool.length],pool[ri],pool[(ri+1)%pool.length]].map((p,i)=>`<div class="di ${i===1?'on':''}">@${p.username}</div>`).join('');
     if(el<dur){setTimeout(tick,delay);}
-    else{dr.innerHTML=`<div class="di">${sup[0]?'@'+sup[0].username:''}</div><div class="di on">@${win.username}</div><div class="di">${sup[1]?'@'+sup[1].username:''}</div>`;pf.style.width='100%';pp.textContent='100%';setTimeout(()=>{document.getElementById('sp').style.display='none';showWin(win,sup,pool.length);},450);}
+    else{dr.innerHTML=`<div class="di">${sup[0]?'@'+sup[0].username:''}</div><div class="di on">@${win.username}</div><div class="di">${sup[1]?'@'+sup[1].username:''}</div>`;pf.style.width='100%';pp.textContent='100%';setTimeout(()=>{document.getElementById('sp').style.display='none';showWin(win,sup,pool.length,winners);},450);}
   }
   tick();
 }
@@ -677,7 +692,7 @@ function glitchAnim(pool,win,sup){
     const display=target.slice(0,revealed)+randStr(target.length-revealed);
     dr.innerHTML=`<div class="di on" style="font-family:'JetBrains Mono',monospace;letter-spacing:2px;color:var(--accent);">${display}</div>`;
     if(el<dur) setTimeout(tick,60);
-    else{dr.innerHTML=`<div class="di on">@${win.username}</div>`;pf.style.width='100%';pp.textContent='100%';setTimeout(()=>{document.getElementById('sp').style.display='none';showWin(win,sup,pool.length);},500);}
+    else{dr.innerHTML=`<div class="di on">@${win.username}</div>`;pf.style.width='100%';pp.textContent='100%';setTimeout(()=>{document.getElementById('sp').style.display='none';showWin(win,sup,pool.length,winners);},500);}
   }
   tick();
 }
@@ -706,7 +721,7 @@ function spotlightAnim(pool,win,sup){
       const winEl=[...items].find(i=>i.dataset.u===win.username);
       if(winEl)winEl.classList.add('lit');
       pf.style.width='100%';pp.textContent='100%';
-      setTimeout(()=>{document.getElementById('sp').style.display='none';showWin(win,sup,pool.length);},700);
+      setTimeout(()=>{document.getElementById('sp').style.display='none';showWin(win,sup,pool.length,winners);},700);
     }
   }
   tick();
@@ -763,7 +778,7 @@ function wheelAnim(pool,win,sup){
     document.getElementById('pf').style.width=(pct*100)+'%';
     document.getElementById('pp').textContent=Math.round(pct*100)+'%';
     if(pct<1) requestAnimationFrame(tick);
-    else setTimeout(()=>{document.getElementById('sp').style.display='none';showWin(win,sup,pool.length);},600);
+    else setTimeout(()=>{document.getElementById('sp').style.display='none';showWin(win,sup,pool.length,winners);},600);
   }
   drawWheel(0);
   requestAnimationFrame(tick);
@@ -797,7 +812,7 @@ function cardsAnim(pool,win,sup){
       setTimeout(tick,speed);
     } else {
       renderCards(picks.findIndex(p=>p.username===win.username),true);
-      setTimeout(()=>{document.getElementById('sp').style.display='none';showWin(win,sup,pool.length);},700);
+      setTimeout(()=>{document.getElementById('sp').style.display='none';showWin(win,sup,pool.length,winners);},700);
     }
   }
   renderCards(0,false);
@@ -805,18 +820,37 @@ function cardsAnim(pool,win,sup){
 }
 
 
-function showWin(win,sup,tot){
-  document.getElementById('m-t').textContent='🎉 ¡Ganador!';
+function showWin(win,sup,tot,winners){
+  const nwin=winners?winners.length:1;
+  document.getElementById('m-t').textContent=nwin>1?`🎉 ${nwin} Ganadores`:'🎉 ¡Ganador!';
   document.getElementById('wp').classList.add('on');
-  const wavEl=document.getElementById('wav');
-  wavEl.textContent=win.username.charAt(0).toUpperCase();
-  document.getElementById('wn').textContent=win.username;
-  const wc=document.getElementById('wc');
-  if(win.comment){wc.style.display='block';wc.textContent=`"${win.comment}"`;} else wc.style.display='none';
+
+  if(nwin>1){
+    // Multiple winners view
+    document.getElementById('wav').style.display='none';
+    document.getElementById('wlbl').textContent=nwin+' Ganadores';
+    document.getElementById('wn').textContent='';
+    document.getElementById('wcrown').textContent='🏆';
+    const wc=document.getElementById('wc');wc.style.display='none';
+    // Replace winner card content with list
+    const wcard=document.querySelector('.wcard');
+    wcard.innerHTML=`<div class="wcrown">🏆</div><div class="wlbl">${nwin} Ganadores</div><div class="winners-list">${winners.map((w,i)=>`<div class="winner-row"><span class="winner-pos">${i+1}°</span><div class="winner-av">${w.username.charAt(0).toUpperCase()}</div><span class="winner-un">@${w.username}</span></div>`).join('')}</div>`;
+  } else {
+    document.getElementById('wav').style.display='';
+    document.getElementById('wav').textContent=win.username.charAt(0).toUpperCase();
+    document.getElementById('wlbl').textContent='Ganador';
+    document.getElementById('wn').textContent=win.username;
+    const wc=document.getElementById('wc');
+    if(win.comment){wc.style.display='block';wc.textContent=`"${win.comment}"`;} else wc.style.display='none';
+  }
+
   const sw=document.getElementById('sup-wrap'),sg=document.getElementById('sg');
   if(sup.length){sw.style.display='block';sg.innerHTML=sup.map((s,i)=>`<div class="sc"><span class="sn">${i+1}°</span>@${s.username}</div>`).join('');}else sw.style.display='none';
   document.getElementById('mf').style.display='flex';
-  if(document.getElementById('o-hist').checked){hist.unshift({date:new Date().toLocaleString('es-EC'),winner:win.username,comment:win.comment,suplentes:sup.map(s=>s.username),total:tot});if(hist.length>50)hist.pop();localStorage.setItem('ks-h',JSON.stringify(hist));}
+  if(document.getElementById('o-hist').checked){
+    hist.unshift({date:new Date().toLocaleString('es-EC'),winner:winners?winners.map(w=>w.username).join(', '):win.username,comment:win.comment,suplentes:sup.map(s=>s.username),total:tot});
+    if(hist.length>50)hist.pop();localStorage.setItem('ks-h',JSON.stringify(hist));
+  }
   confetti();
 }
 
