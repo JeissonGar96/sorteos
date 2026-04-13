@@ -206,11 +206,27 @@ tbody tr.ex td{opacity:.4;}tbody tr.ex .uname{text-decoration:line-through;}
 .cards-wrap{position:relative;height:130px;display:flex;align-items:center;justify-content:center;}
 .card-item{position:absolute;width:160px;padding:16px;border-radius:12px;background:var(--surface2);border:1.5px solid var(--border);text-align:center;font-weight:700;font-size:14px;box-shadow:var(--shadow-lg);transition:transform .4s ease,opacity .3s;}
 .card-item.winner-card-anim{background:linear-gradient(135deg,var(--accent),#a78bfa);color:#fff;border-color:transparent;z-index:10;}
-.winners-list{display:flex;flex-direction:column;gap:7px;margin-top:12px;text-align:left;}
-.winner-row{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.12);border-radius:8px;padding:8px 12px;}
-.winner-pos{font-family:'JetBrains Mono',monospace;font-size:12px;color:rgba(255,255,255,.7);font-weight:700;width:20px;flex-shrink:0;}
-.winner-av{width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#fff;flex-shrink:0;}
-.winner-un{font-weight:700;font-size:13px;color:#fff;}
+.podium-wrap{display:flex;flex-direction:column;gap:8px;margin-top:12px;}
+.podium-card{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);border-radius:12px;text-align:center;transition:.2s;}
+.podium-card:first-child{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.3);}
+.podium-medal{font-size:22px;margin-bottom:6px;}
+.winner-av{border-radius:50%;background:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;margin:0 auto 8px;font-family:'JetBrains Mono',monospace;}
+.winner-un{font-weight:800;color:#fff;letter-spacing:-.3px;word-break:break-all;}
+.winner-cmt{font-size:11px;color:rgba(255,255,255,.6);margin-top:5px;font-style:italic;line-height:1.4;}
+.rest-list{display:flex;flex-direction:column;gap:5px;margin-top:8px;}
+.rest-row{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.08);border-radius:7px;padding:6px 10px;}
+.rest-pos{font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,.5);font-weight:700;width:22px;flex-shrink:0;}
+.rest-av{width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:10px;color:#fff;flex-shrink:0;}
+.rest-un{font-weight:600;font-size:12px;color:rgba(255,255,255,.85);}
+
+.hide-sm{} /* visible by default */
+.th-del,.td-del{width:36px;text-align:center;padding:9px 8px;}
+@media(max-width:600px){
+  .hide-sm{display:none;}
+  .th-del,.td-del{width:36px;padding:9px 6px;}
+  .av{width:28px;height:28px;font-size:11px;}
+  .uname{font-size:12px;}
+}
 </style>
 </head>
 <body>
@@ -581,6 +597,8 @@ function updStats(){
   document.getElementById('s-v').textContent=val;
   document.getElementById('s-e').textContent=ex;
   document.getElementById('pc').textContent=val;
+  const block=document.getElementById('sb-sortear');
+  if(block) block.style.display=val>0?'block':'none';
 }
 
 function renderTable(){
@@ -597,17 +615,17 @@ function renderTable(){
     return;
   }
   const rows=filt.filter(p=>!q||p.username.toLowerCase().includes(q)||(p.comment||'').toLowerCase().includes(q));
-  let html=`<table><thead><tr><th>#</th><th>Usuario</th>${hasCmt?'<th>Comentario</th>':''}${fwOn?'<th>¿Sigue?</th>':''}<th></th></tr></thead><tbody>`;
+  let html=`<table><thead><tr><th>#</th><th>Usuario</th>${hasCmt?'<th class="hide-sm">Comentario</th>':''}${fwOn?'<th class="hide-sm">¿Sigue?</th>':''}<th class="th-del"></th></tr></thead><tbody>`;
   rows.forEach((p,vi)=>{
     const oi=filt.indexOf(p);
     const init=p.username.charAt(0).toUpperCase();
     const avHtml=init;
     html+=`<tr>
-      <td style="color:var(--text3);font-family:'JetBrains Mono',monospace;font-size:11px;">${vi+1}</td>
+      <td class="hide-sm" style="color:var(--text3);font-family:'JetBrains Mono',monospace;font-size:11px;">${vi+1}</td>
       <td><div class="uc"><div class="av">${avHtml}</div><div class="uname"><span class="uat">@</span>${p.username}</div></div></td>
-      ${hasCmt?`<td><div class="ctxt" title="${p.comment||''}">${p.comment||'—'}</div></td>`:''}
-      ${fwOn?`<td><select class="fsel" onchange="setFw(${oi},this.value)"><option value="null" ${p.followsAll===null?'selected':''}>Sin verificar</option><option value="true" ${p.followsAll===true?'selected':''}>✅ Sigue</option><option value="false" ${p.followsAll===false?'selected':''}>❌ No sigue</option></select></td>`:''}
-      <td><button class="ra" onclick="manualExclude(${oi})" title="Excluir manualmente">✕</button></td>
+      ${hasCmt?`<td class="hide-sm"><div class="ctxt" title="${p.comment||''}">${p.comment||'—'}</div></td>`:''}
+      ${fwOn?`<td class="hide-sm"><select class="fsel" onchange="setFw(${oi},this.value)"><option value="null" ${p.followsAll===null?'selected':''}>Sin verificar</option><option value="true" ${p.followsAll===true?'selected':''}>✅ Sigue</option><option value="false" ${p.followsAll===false?'selected':''}>❌ No sigue</option></select></td>`:''}
+      <td class="td-del"><button class="ra" onclick="manualExclude(${oi})" title="Excluir">✕</button></td>
     </tr>`;
   });
   html+='</tbody></table>';
@@ -826,15 +844,33 @@ function showWin(win,sup,tot,winners){
   document.getElementById('wp').classList.add('on');
 
   if(nwin>1){
-    // Multiple winners view
-    document.getElementById('wav').style.display='none';
-    document.getElementById('wlbl').textContent=nwin+' Ganadores';
-    document.getElementById('wn').textContent='';
-    document.getElementById('wcrown').textContent='🏆';
-    const wc=document.getElementById('wc');wc.style.display='none';
-    // Replace winner card content with list
     const wcard=document.querySelector('.wcard');
-    wcard.innerHTML=`<div class="wcrown">🏆</div><div class="wlbl">${nwin} Ganadores</div><div class="winners-list">${winners.map((w,i)=>`<div class="winner-row"><span class="winner-pos">${i+1}°</span><div class="winner-av">${w.username.charAt(0).toUpperCase()}</div><span class="winner-un">@${w.username}</span></div>`).join('')}</div>`;
+    const podium=winners.slice(0,Math.min(3,nwin));
+    const rest=winners.slice(3);
+    const medals=['🥇','🥈','🥉'];
+    const sizes=[{av:58,un:22,pad:'20px'},{av:44,un:17,pad:'14px 20px'},{av:36,un:14,pad:'10px 20px'}];
+    let html='<div class="wcrown">🏆</div><div class="wlbl">'+nwin+' Ganadores</div>';
+    // Podium cards (1st, 2nd, 3rd)
+    html+='<div class="podium-wrap">';
+    podium.forEach((w,i)=>{
+      const s=sizes[i];
+      html+=`<div class="podium-card" style="padding:${s.pad}">
+        <div class="podium-medal">${medals[i]}</div>
+        <div class="winner-av" style="width:${s.av}px;height:${s.av}px;font-size:${Math.round(s.av*.4)}px;">${w.username.charAt(0).toUpperCase()}</div>
+        <div class="winner-un" style="font-size:${s.un}px;">@${w.username}</div>
+        ${w.comment?`<div class="winner-cmt">"${w.comment}"</div>`:''}
+      </div>`;
+    });
+    html+='</div>';
+    // Rest as compact list (4th onwards)
+    if(rest.length){
+      html+='<div class="rest-list">';
+      rest.forEach((w,i)=>{
+        html+=`<div class="rest-row"><span class="rest-pos">${i+4}°</span><div class="rest-av">${w.username.charAt(0).toUpperCase()}</div><span class="rest-un">@${w.username}</span></div>`;
+      });
+      html+='</div>';
+    }
+    wcard.innerHTML=html;
   } else {
     document.getElementById('wav').style.display='';
     document.getElementById('wav').textContent=win.username.charAt(0).toUpperCase();
