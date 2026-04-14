@@ -328,7 +328,13 @@ tbody tr:hover td{background:var(--al2);}
     <div class="card" style="padding:0;overflow:hidden;">
       <div class="hero">
         <div class="hero-icon">🎯</div>
-        <div class="hero-title">Nuevo sorteo</div>
+        <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:4px;">
+          <div class="hero-title" id="sorteo-title-display" style="cursor:pointer;" onclick="editTitle()">Nuevo sorteo</div>
+          <button onclick="editTitle()" style="background:none;border:none;cursor:pointer;font-size:13px;color:var(--text3);padding:2px;line-height:1;opacity:.7;" title="Editar nombre">✏️</button>
+        </div>
+        <div id="title-edit-wrap" style="display:none;margin-bottom:8px;">
+          <input type="text" id="sorteo-title-input" placeholder="Nombre del sorteo..." style="text-align:center;font-size:16px;font-weight:700;" onblur="saveTitle()" onkeydown="if(event.key==='Enter')saveTitle()">
+        </div>
         <div class="hero-sub">Elige de dónde vienen los participantes</div>
       </div>
 
@@ -529,6 +535,7 @@ tbody tr:hover td{background:var(--al2);}
 
 <script>
 let parts=[],filt=[],allRows=[],kws=[],src='ig',filtersApplied=false;
+let sorteoTitle='Nuevo sorteo';
 let nwin=1,nsup=0,cdsec=10,selectedAnim='countdown';
 let hist=JSON.parse(localStorage.getItem('ks-h')||'[]');
 
@@ -549,6 +556,23 @@ let hist=JSON.parse(localStorage.getItem('ks-h')||'[]');
     document.getElementById('theme-btn').textContent='☀️';
   }
 })();
+function editTitle(){
+  const display=document.getElementById('sorteo-title-display');
+  const wrap=document.getElementById('title-edit-wrap');
+  const inp=document.getElementById('sorteo-title-input');
+  display.style.display='none';
+  wrap.style.display='block';
+  inp.value=sorteoTitle;
+  setTimeout(()=>{inp.focus();inp.select();},50);
+}
+function saveTitle(){
+  const inp=document.getElementById('sorteo-title-input');
+  const val=inp.value.trim();
+  if(val)sorteoTitle=val;
+  document.getElementById('sorteo-title-display').textContent=sorteoTitle;
+  document.getElementById('sorteo-title-display').style.display='';
+  document.getElementById('title-edit-wrap').style.display='none';
+}
 function toggleTheme(){
   const isDark=document.getElementById('theme-btn').textContent==='☀️';
   if(isDark){
@@ -838,14 +862,71 @@ function showWin(win,sup,tot,winners){
     wp.innerHTML=h;
   }
   document.getElementById('mf').style.display='flex';
-  hist.unshift({date:new Date().toLocaleString('es-EC'),winner:winners?winners.map(w=>w.username).join(', '):win.username,suplentes:sup.map(s=>s.username),total:tot});
+  hist.unshift({date:new Date().toLocaleString('es-EC'),title:sorteoTitle!=='Nuevo sorteo'?sorteoTitle:'',winner:winners?winners.map(w=>w.username).join(', '):win.username,suplentes:sup.map(s=>s.username),total:tot});
   if(hist.length>50)hist.pop();localStorage.setItem('ks-h',JSON.stringify(hist));
   confetti();
 }
 
 function copyW(){const n=document.querySelector('.wun')||document.querySelector('.winner-un');if(n)navigator.clipboard.writeText(n.textContent.trim()).then(()=>notif('Copiado ✓','ok'));}
 function closeModal(){document.getElementById('ov').classList.remove('open');}
-function openHist(){document.getElementById('hov').classList.add('open');const b=document.getElementById('hb');if(!hist.length){b.innerHTML='<div class="hem">Sin sorteos guardados aún.</div>';return;}b.innerHTML=hist.map(r=>`<div class="hi"><div class="hd">${r.date}</div><div class="hw">${r.winner}</div><div class="hm">${r.total} participantes · ${r.suplentes.length} suplentes</div></div>`).join('');}
+function openHist(){
+  document.getElementById('hov').classList.add('open');
+  renderHistList();
+}
+function renderHistList(){
+  const b=document.getElementById('hb');
+  if(!hist.length){b.innerHTML='<div class="hem">Sin sorteos guardados aún.</div>';return;}
+  b.innerHTML=hist.map((r,i)=>`
+    <div class="hi" style="position:relative;padding-right:44px;" onclick="viewHistEntry(${i})">
+      <div class="hd">${r.date}${r.title?` · <em>${r.title}</em>`:''}</div>
+      <div class="hw">${r.winner}</div>
+      <div class="hm">${r.total} participantes · ${r.suplentes.length} suplentes</div>
+      <button onclick="event.stopPropagation();deleteHist(${i})" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);width:26px;height:26px;border-radius:6px;border:1px solid var(--border);background:var(--white);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--text3);transition:.15s;" onmouseover="this.style.borderColor='var(--red)';this.style.color='var(--red)';" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text3)';">🗑</button>
+    </div>`).join('');
+}
+function deleteHist(i){
+  if(!confirm('¿Eliminar este sorteo del historial?'))return;
+  hist.splice(i,1);
+  localStorage.setItem('ks-h',JSON.stringify(hist));
+  renderHistList();
+}
+function viewHistEntry(i){
+  const r=hist[i];
+  // Build winner modal from history
+  const winners=r.winner.split(', ').map(u=>({username:u.trim(),comment:''}));
+  const sup=(r.suplentes||[]).map(u=>({username:u,comment:''}));
+  // Open modal with history data
+  document.getElementById('ov').classList.add('open');
+  document.getElementById('sp').style.display='none';
+  const wp=document.getElementById('wp');wp.classList.add('on');
+  const medals=['🥇','🥈','🥉'];
+  const nw=winners.length;
+  let h='';
+  if(nw>1){
+    const podium=winners.slice(0,3),rest=winners.slice(3);
+    const sizes=[{av:58,un:22,pad:'20px'},{av:44,un:17,pad:'14px 20px'},{av:36,un:14,pad:'10px 20px'}];
+    h='<div class="wcard"><div class="wcrown">🏆</div><div class="wlbl">'+nw+' Ganadores</div><div class="podium-wrap">';
+    podium.forEach((w,idx)=>{const s=sizes[idx];h+=`<div class="podium-card" style="padding:${s.pad}"><div class="podium-medal">${medals[idx]}</div><div class="winner-av" style="width:${s.av}px;height:${s.av}px;font-size:${s.av*.4|0}px;">${w.username.charAt(0).toUpperCase()}</div><div class="winner-un" style="font-size:${s.un}px;">@${w.username}</div></div>`;});
+    h+='</div>';if(rest.length){h+='<div class="rest-list">';rest.forEach((w,idx)=>{h+=`<div class="rest-row"><span class="rest-pos">${idx+4}°</span><div class="rest-av">${w.username.charAt(0).toUpperCase()}</div><span class="rest-un">@${w.username}</span></div>`;});h+='</div>';}
+    h+='</div>';
+  } else {
+    h=`<div class="wcard"><div class="wcrown">🏆</div><div class="wlbl">Ganador</div><div class="wav">${winners[0].username.charAt(0).toUpperCase()}</div><div class="wun"><span class="wig">@</span>${winners[0].username}</div></div>`;
+  }
+  if(sup.length)h+=`<div style="padding:0 20px 4px;"><div class="sw-t">Suplentes</div><div class="sg">${sup.map((s,idx)=>`<div class="sc"><span class="sn">${idx+1}°</span>@${s.username}</div>`).join('')}</div></div>`;
+  // Add date + title info
+  h=`<div style="padding:14px 20px 0;text-align:center;"><div style="font-size:11px;color:var(--text3);">${r.date}</div>${r.title?`<div style="font-size:13px;font-weight:600;color:var(--text2);margin-top:2px;">${r.title}</div>`:''}</div>`+h;
+  wp.innerHTML=h;
+  document.getElementById('m-t').textContent='Resultado anterior';
+  document.getElementById('mf').style.display='flex';
+  document.getElementById('mf').innerHTML=`<button class="btn btn-ghost" onclick="deleteHistAndClose(${i})" style="color:var(--red);border-color:var(--red);">🗑 Eliminar</button><button class="btn btn-ghost" onclick="closeModal()">Cerrar</button>`;
+  closeHist();
+}
+function deleteHistAndClose(i){
+  hist.splice(i,1);
+  localStorage.setItem('ks-h',JSON.stringify(hist));
+  closeModal();
+  notif('Sorteo eliminado','ok');
+}
 function closeHist(){document.getElementById('hov').classList.remove('open');}
 function confetti(){const cols=['#6d28d9','#a78bfa','#059669','#f59e0b','#dc2626','#fff'];for(let i=0;i<65;i++){const el=document.createElement('div');el.className='cf';el.style.cssText=`left:${Math.random()*100}vw;top:-10px;width:${5+Math.random()*6}px;height:${5+Math.random()*6}px;background:${cols[Math.floor(Math.random()*cols.length)]};animation-duration:${1.5+Math.random()*2}s;animation-delay:${Math.random()*.4}s;border-radius:${Math.random()>.5?'50%':'2px'};`;document.body.appendChild(el);el.addEventListener('animationend',()=>el.remove());}}
 function notif(msg,type='ok'){const el=document.createElement('div');el.className=`notif ${type}`;el.textContent=msg;document.body.appendChild(el);setTimeout(()=>el.remove(),3000);}
