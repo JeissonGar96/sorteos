@@ -227,6 +227,9 @@ tbody tr.ex td{opacity:.4;}tbody tr.ex .uname{text-decoration:line-through;}
   .av{width:28px;height:28px;font-size:11px;}
   .uname{font-size:12px;}
 }
+.sl-list{display:flex;flex-direction:column;gap:5px;padding:4px 0;}
+.sl-item{padding:8px 14px;border-radius:8px;font-size:13.5px;font-weight:600;color:var(--text2);background:var(--surface2);border:1.5px solid transparent;transition:all .08s;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sl-item.lit{color:#fff;background:var(--accent);border-color:var(--accent);box-shadow:0 0 20px rgba(124,58,237,.55);transform:scale(1.03);font-size:14.5px;}
 </style>
 </head>
 <body>
@@ -663,7 +666,8 @@ function doSorteo(){
   const sh=[...pool].sort(()=>Math.random()-.5);
   const winners=sh.slice(0,nwin);
   const win=winners[0];
-  const sup=sh.slice(nwin,nwin+ns*nwin);
+  win._winners=winners;
+  const sup=sh.slice(nwin,nwin+(ns||0)*nwin);
 
   // Reset modal
   document.getElementById('ov').classList.add('open');
@@ -682,66 +686,90 @@ function doSorteo(){
   (animMap[selectedAnim]||drumAnim)(pool,win,sup);
 }
 
+/* ── HELPERS ── */
+function spReady(customHtml){
+  // Replace sp content with custom layout if needed, or use drum
+  const sp=document.getElementById('sp');
+  if(customHtml) sp.innerHTML=customHtml;
+}
+function spProgress(pct){
+  const pf=document.getElementById('pf');
+  const pp=document.getElementById('pp');
+  if(pf){pf.style.width=(pct*100)+'%';}
+  if(pp){pp.textContent=Math.round(pct*100)+'%';}
+}
+function spDone(win,sup,pool){
+  document.getElementById('sp').style.display='none';
+  showWin(win,sup,pool.length,win._winners);
+}
+
 /* ── TAMBOR ── */
 function drumAnim(pool,win,sup){
-  const dr=document.getElementById('dr'),pf=document.getElementById('pf'),pp=document.getElementById('pp');
+  // restore default sp layout
+  document.getElementById('sp').innerHTML=`
+    <div class="sp-lbl">Entre <span>${pool.length}</span> participantes válidos</div>
+    <div class="drum"><div class="db t"></div><div class="db b"></div><div class="dr" id="dr"></div></div>
+    <div class="prog"><div class="pt"><div class="pf" id="pf"></div></div><div class="pl"><span>Procesando...</span><span id="pp">0%</span></div></div>`;
   const dur=3000,start=Date.now();let delay=50;
   function tick(){
+    const dr=document.getElementById('dr');
     const el=Date.now()-start,pct=Math.min(el/dur,1);
-    pf.style.width=(pct*100)+'%';pp.textContent=Math.round(pct*100)+'%';
-    delay=50+pct*pct*380;
+    spProgress(pct);delay=50+pct*pct*380;
     const ri=Math.floor(Math.random()*pool.length);
     dr.innerHTML=[pool[(ri-1+pool.length)%pool.length],pool[ri],pool[(ri+1)%pool.length]].map((p,i)=>`<div class="di ${i===1?'on':''}">@${p.username}</div>`).join('');
     if(el<dur){setTimeout(tick,delay);}
-    else{dr.innerHTML=`<div class="di">${sup[0]?'@'+sup[0].username:''}</div><div class="di on">@${win.username}</div><div class="di">${sup[1]?'@'+sup[1].username:''}</div>`;pf.style.width='100%';pp.textContent='100%';setTimeout(()=>{document.getElementById('sp').style.display='none';showWin(win,sup,pool.length,winners);},450);}
+    else{dr.innerHTML=`<div class="di">${sup[0]?'@'+sup[0].username:''}</div><div class="di on">@${win.username}</div><div class="di">${sup[1]?'@'+sup[1].username:''}</div>`;spProgress(1);setTimeout(()=>spDone(win,sup,pool),450);}
   }
   tick();
 }
 
 /* ── GLITCH ── */
 function glitchAnim(pool,win,sup){
-  const dr=document.getElementById('dr'),pf=document.getElementById('pf'),pp=document.getElementById('pp');
+  document.getElementById('sp').innerHTML=`
+    <div class="sp-lbl">Entre <span>${pool.length}</span> participantes válidos</div>
+    <div class="drum"><div class="db t"></div><div class="db b"></div><div class="dr" id="dr"></div></div>
+    <div class="prog"><div class="pt"><div class="pf" id="pf"></div></div><div class="pl"><span>Procesando...</span><span id="pp">0%</span></div></div>`;
   const chars='@#$%&!?ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   const dur=3000,start=Date.now();
   function randStr(len){return Array.from({length:len},()=>chars[Math.floor(Math.random()*chars.length)]).join('');}
   function tick(){
+    const dr=document.getElementById('dr');
     const el=Date.now()-start,pct=Math.min(el/dur,1);
-    pf.style.width=(pct*100)+'%';pp.textContent=Math.round(pct*100)+'%';
+    spProgress(pct);
     const target='@'+win.username;
     const revealed=Math.floor(pct*pct*target.length);
     const display=target.slice(0,revealed)+randStr(target.length-revealed);
-    dr.innerHTML=`<div class="di on" style="font-family:'JetBrains Mono',monospace;letter-spacing:2px;color:var(--accent);">${display}</div>`;
+    dr.innerHTML=`<div class="di on" style="font-family:'JetBrains Mono',monospace;letter-spacing:2px;">${display}</div>`;
     if(el<dur) setTimeout(tick,60);
-    else{dr.innerHTML=`<div class="di on">@${win.username}</div>`;pf.style.width='100%';pp.textContent='100%';setTimeout(()=>{document.getElementById('sp').style.display='none';showWin(win,sup,pool.length,winners);},500);}
+    else{spProgress(1);setTimeout(()=>spDone(win,sup,pool),500);}
   }
   tick();
 }
 
 /* ── SPOTLIGHT ── */
 function spotlightAnim(pool,win,sup){
-  const dr=document.getElementById('dr'),pf=document.getElementById('pf'),pp=document.getElementById('pp');
-  // Pick 7 random names + winner
-  const others=[...pool].filter(p=>p.username!==win.username).sort(()=>Math.random()-.5).slice(0,7);
+  const others=[...pool].filter(p=>p.username!==win.username).sort(()=>Math.random()-.5).slice(0,8);
   const display=[...others,win].sort(()=>Math.random()-.5);
-  dr.innerHTML=`<div class="spotlight-list">${display.map(p=>`<div class="spotlight-item" data-u="${p.username}">@${p.username}</div>`).join('')}</div>`;
-  const dur=3000,start=Date.now();
-  let litIdx=-1;
+  document.getElementById('sp').innerHTML=`
+    <div class="sp-lbl">Entre <span>${pool.length}</span> participantes válidos</div>
+    <div class="sl-list">${display.map(p=>`<div class="sl-item" data-u="${p.username}">@${p.username}</div>`).join('')}</div>
+    <div class="prog" style="margin-top:10px;"><div class="pt"><div class="pf" id="pf"></div></div><div class="pl"><span>Procesando...</span><span id="pp">0%</span></div></div>`;
+  const dur=3000,start=Date.now();let litIdx=-1;
   function tick(){
     const el=Date.now()-start,pct=Math.min(el/dur,1);
-    pf.style.width=(pct*100)+'%';pp.textContent=Math.round(pct*100)+'%';
-    const items=dr.querySelectorAll('.spotlight-item');
-    if(litIdx>=0)items[litIdx]?.classList.remove('lit');
-    const speed=el<dur*.7?80:el<dur*.9?160:300;
-    if(el<dur){
+    spProgress(pct);
+    const items=document.querySelectorAll('.sl-item');
+    if(litIdx>=0&&items[litIdx])items[litIdx].classList.remove('lit');
+    const speed=el<dur*.7?80:el<dur*.9?160:320;
+    if(pct<1){
       litIdx=Math.floor(Math.random()*items.length);
-      items[litIdx]?.classList.add('lit');
+      if(items[litIdx])items[litIdx].classList.add('lit');
       setTimeout(tick,speed);
     } else {
       items.forEach(i=>i.classList.remove('lit'));
       const winEl=[...items].find(i=>i.dataset.u===win.username);
       if(winEl)winEl.classList.add('lit');
-      pf.style.width='100%';pp.textContent='100%';
-      setTimeout(()=>{document.getElementById('sp').style.display='none';showWin(win,sup,pool.length,winners);},700);
+      spProgress(1);setTimeout(()=>spDone(win,sup,pool),700);
     }
   }
   tick();
@@ -749,96 +777,76 @@ function spotlightAnim(pool,win,sup){
 
 /* ── RULETA ── */
 function wheelAnim(pool,win,sup){
-  const dr=document.getElementById('dr');
   const names=[...pool].sort(()=>Math.random()-.5).slice(0,Math.min(pool.length,12));
-  // Make sure winner is in wheel
   if(!names.find(p=>p.username===win.username)) names[0]=win;
   const winIdx=names.findIndex(p=>p.username===win.username);
-  dr.innerHTML=`<div class="wheel-wrap"><div class="wheel-pointer">▼</div><canvas class="wheel-canvas" id="wc" width="220" height="220"></canvas></div>`;
-
+  document.getElementById('sp').innerHTML=`
+    <div class="sp-lbl">Entre <span>${pool.length}</span> participantes válidos</div>
+    <div class="wheel-wrap"><div class="wheel-pointer">▼</div><canvas id="wc" class="wheel-canvas" width="220" height="220"></canvas></div>
+    <div class="prog" style="margin-top:12px;"><div class="pt"><div class="pf" id="pf"></div></div><div class="pl"><span>Procesando...</span><span id="pp">0%</span></div></div>`;
   const canvas=document.getElementById('wc');
   const ctx=canvas.getContext('2d');
   const cx=110,cy=110,r=105,n=names.length;
   const colors=['#7c3aed','#8b5cf6','#6d28d9','#a78bfa','#5b21b6','#c4b5fd'];
-
   function drawWheel(angle){
     ctx.clearRect(0,0,220,220);
     const slice=(2*Math.PI)/n;
     for(let i=0;i<n;i++){
       const a=angle+i*slice;
-      ctx.beginPath();ctx.moveTo(cx,cy);
-      ctx.arc(cx,cy,r,a,a+slice);ctx.closePath();
+      ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,r,a,a+slice);ctx.closePath();
       ctx.fillStyle=colors[i%colors.length];ctx.fill();
       ctx.strokeStyle='rgba(255,255,255,.15)';ctx.lineWidth=1.5;ctx.stroke();
       ctx.save();ctx.translate(cx,cy);ctx.rotate(a+slice/2);
-      ctx.textAlign='right';ctx.fillStyle='#fff';
-      ctx.font='bold 10px Sora,sans-serif';
-      const label='@'+names[i].username.slice(0,10)+(names[i].username.length>10?'…':'');
-      ctx.fillText(label,r-6,4);ctx.restore();
+      ctx.textAlign='right';ctx.fillStyle='#fff';ctx.font='bold 10px Sora,sans-serif';
+      ctx.fillText('@'+names[i].username.slice(0,10),r-6,4);ctx.restore();
     }
-    // Center circle
     ctx.beginPath();ctx.arc(cx,cy,18,0,2*Math.PI);
-    ctx.fillStyle='var(--surface)';ctx.fill();
-    ctx.strokeStyle='rgba(124,58,237,.3)';ctx.lineWidth=2;ctx.stroke();
+    ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--surface')||'#1a1d27';
+    ctx.fill();
   }
-
-  // Calculate target angle so winner lands at top (pointer at -PI/2)
   const slice=(2*Math.PI)/n;
   const targetAngle=(-Math.PI/2)-(winIdx*slice+slice/2);
-  const spins=5*2*Math.PI;
-  const finalAngle=targetAngle+spins;
-
+  const finalAngle=targetAngle+5*2*Math.PI;
   const dur=4000,start=Date.now();
   function tick(){
-    const el=Date.now()-start;
-    const pct=Math.min(el/dur,1);
+    const el=Date.now()-start,pct=Math.min(el/dur,1);
     const ease=1-Math.pow(1-pct,4);
-    const angle=ease*finalAngle;
-    drawWheel(angle);
-    document.getElementById('pf').style.width=(pct*100)+'%';
-    document.getElementById('pp').textContent=Math.round(pct*100)+'%';
+    drawWheel(ease*finalAngle);spProgress(pct);
     if(pct<1) requestAnimationFrame(tick);
-    else setTimeout(()=>{document.getElementById('sp').style.display='none';showWin(win,sup,pool.length,winners);},600);
+    else setTimeout(()=>spDone(win,sup,pool),600);
   }
-  drawWheel(0);
-  requestAnimationFrame(tick);
+  drawWheel(0);requestAnimationFrame(tick);
 }
 
 /* ── CARTAS ── */
 function cardsAnim(pool,win,sup){
-  const dr=document.getElementById('dr'),pf=document.getElementById('pf'),pp=document.getElementById('pp');
   const picks=[...pool].sort(()=>Math.random()-.5).slice(0,Math.min(pool.length,6));
   if(!picks.find(p=>p.username===win.username)) picks[picks.length-1]=win;
-
+  document.getElementById('sp').innerHTML=`
+    <div class="sp-lbl">Entre <span>${pool.length}</span> participantes válidos</div>
+    <div class="cards-wrap" id="cards-wrap"></div>
+    <div class="prog" style="margin-top:12px;"><div class="pt"><div class="pf" id="pf"></div></div><div class="pl"><span>Procesando...</span><span id="pp">0%</span></div></div>`;
   function renderCards(activeIdx,flipped){
-    dr.innerHTML=`<div class="cards-wrap">${picks.map((p,i)=>{
-      const offset=(i-picks.length/2)*18;
-      const rot=(i-picks.length/2)*6;
+    const cw=document.getElementById('cards-wrap');
+    if(!cw)return;
+    cw.innerHTML=picks.map((p,i)=>{
+      const offset=(i-picks.length/2)*20;
+      const rot=(i-picks.length/2)*7;
       const isActive=i===activeIdx;
       const isWinner=flipped&&p.username===win.username;
-      return `<div class="card-item ${isWinner?'winner-card-anim':''}" style="transform:translate(${offset}px,${isActive?-12:0}px) rotate(${rot}deg);z-index:${isActive?10:i};opacity:${flipped&&!isWinner?.3:1};">@${isWinner?win.username:p.username.slice(0,12)}</div>`;
-    }).join('')}</div>`;
+      return `<div class="card-item ${isWinner?'winner-card-anim':''}" style="transform:translate(${offset}px,${isActive?-14:0}px) rotate(${rot}deg);z-index:${isActive?10:i};opacity:${flipped&&!isWinner?.25:1};">@${isWinner?win.username:p.username.slice(0,12)}</div>`;
+    }).join('');
   }
-
-  const dur=3000,start=Date.now();
-  let activeIdx=0;
+  const dur=3000,start=Date.now();let activeIdx=0;
   function tick(){
     const el=Date.now()-start,pct=Math.min(el/dur,1);
-    pf.style.width=(pct*100)+'%';pp.textContent=Math.round(pct*100)+'%';
+    spProgress(pct);
     const speed=el<dur*.7?100:el<dur*.9?200:400;
-    if(pct<1){
-      activeIdx=(activeIdx+1)%picks.length;
-      renderCards(activeIdx,false);
-      setTimeout(tick,speed);
-    } else {
-      renderCards(picks.findIndex(p=>p.username===win.username),true);
-      setTimeout(()=>{document.getElementById('sp').style.display='none';showWin(win,sup,pool.length,winners);},700);
-    }
+    if(pct<1){activeIdx=(activeIdx+1)%picks.length;renderCards(activeIdx,false);setTimeout(tick,speed);}
+    else{renderCards(picks.findIndex(p=>p.username===win.username),true);spProgress(1);setTimeout(()=>spDone(win,sup,pool),700);}
   }
-  renderCards(0,false);
-  tick();
+  renderCards(0,false);tick();
 }
-
 
 function showWin(win,sup,tot,winners){
   const nwin=winners?winners.length:1;
