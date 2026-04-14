@@ -543,16 +543,20 @@ let hist=JSON.parse(localStorage.getItem('ks-h')||'[]');
 (function(){
   const t=localStorage.getItem('ks-theme');
   if(t==='dark'){
-    document.documentElement.style.setProperty('--bg','#0f0e1a');
-    document.documentElement.style.setProperty('--white','#1a1827');
-    document.documentElement.style.setProperty('--surface','#13121f');
-    document.documentElement.style.setProperty('--border','#2d2a42');
-    document.documentElement.style.setProperty('--border2','#3d3960');
-    document.documentElement.style.setProperty('--text','#f0eeff');
-    document.documentElement.style.setProperty('--text2','#a09cc0');
-    document.documentElement.style.setProperty('--text3','#5e5a80');
-    document.documentElement.style.setProperty('--al','rgba(109,40,217,.2)');
-    document.documentElement.style.setProperty('--al2','rgba(109,40,217,.08)');
+    document.documentElement.style.setProperty('--bg','#141414');
+    document.documentElement.style.setProperty('--white','#1f1f1f');
+    document.documentElement.style.setProperty('--surface','#1a1a1a');
+    document.documentElement.style.setProperty('--border','#2e2e2e');
+    document.documentElement.style.setProperty('--border2','#3a3a3a');
+    document.documentElement.style.setProperty('--text','#f0f0f0');
+    document.documentElement.style.setProperty('--text2','#a0a0a0');
+    document.documentElement.style.setProperty('--text3','#555555');
+    document.documentElement.style.setProperty('--accent','#e0e0e0');
+    document.documentElement.style.setProperty('--accent2','#ffffff');
+    document.documentElement.style.setProperty('--al','rgba(255,255,255,.08)');
+    document.documentElement.style.setProperty('--al2','rgba(255,255,255,.04)');
+    document.documentElement.style.setProperty('--shadow','0 2px 8px rgba(0,0,0,.4),0 1px 2px rgba(0,0,0,.3)');
+    document.documentElement.style.setProperty('--shadow-lg','0 16px 40px rgba(0,0,0,.5),0 4px 12px rgba(0,0,0,.3)');
     document.getElementById('theme-btn').textContent='☀️';
   }
 })();
@@ -841,6 +845,7 @@ function wheelAnim(pool,win,sup){
   draw(0);requestAnimationFrame(tick);
 }
 
+function darkWcard(){return localStorage.getItem('ks-theme')=='dark'?'background:#2a2a2a;border:1px solid #3a3a3a;':''}
 function showWin(win,sup,tot,winners){
   const nw=winners?winners.length:1;
   document.getElementById('m-t').textContent=nw>1?`🎉 ${nw} Ganadores`:'🎉 ¡Ganador!';
@@ -849,7 +854,7 @@ function showWin(win,sup,tot,winners){
   if(nw>1){
     const podium=winners.slice(0,3),rest=winners.slice(3);
     const sizes=[{av:58,un:22,pad:'20px'},{av:44,un:17,pad:'14px 20px'},{av:36,un:14,pad:'10px 20px'}];
-    let h='<div class="wcard"><div class="wcrown">🏆</div><div class="wlbl">'+nw+' Ganadores</div><div class="podium-wrap">';
+    h='<div class="wcard" style="'+darkWcard()+'"><div class="wcrown">🏆</div><div class="wlbl">'+nw+' Ganadores</div><div class="podium-wrap">';
     podium.forEach((w,i)=>{const s=sizes[i];h+=`<div class="podium-card" style="padding:${s.pad}"><div class="podium-medal">${medals[i]}</div><div class="winner-av" style="width:${s.av}px;height:${s.av}px;font-size:${s.av*.4|0}px;">${w.username.charAt(0).toUpperCase()}</div><div class="winner-un" style="font-size:${s.un}px;">@${w.username}</div>${w.comment?`<div class="winner-cmt">"${w.comment}"</div>`:''}</div>`;});
     h+='</div>';
     if(rest.length){h+='<div class="rest-list">';rest.forEach((w,i)=>{h+=`<div class="rest-row"><span class="rest-pos">${i+4}°</span><div class="rest-av">${w.username.charAt(0).toUpperCase()}</div><span class="rest-un">@${w.username}</span></div>`;});h+='</div>';}
@@ -857,7 +862,7 @@ function showWin(win,sup,tot,winners){
     if(sup.length)h+=`<div style="padding:0 20px 4px;"><div class="sw-t">Suplentes</div><div class="sg">${sup.map((s,i)=>`<div class="sc"><span class="sn">${i+1}°</span>@${s.username}</div>`).join('')}</div></div>`;
     wp.innerHTML=h;
   } else {
-    let h=`<div class="wcard"><div class="wcrown">🏆</div><div class="wlbl">Ganador</div><div class="wav">${win.username.charAt(0).toUpperCase()}</div><div class="wun"><span class="wig">@</span>${win.username}</div>${win.comment?`<div class="wcmt">"${win.comment}"</div>`:''}</div>`;
+    let h=`<div class="wcard" style="${darkWcard()}"><div class="wcrown">🏆</div><div class="wlbl">Ganador</div><div class="wav">${win.username.charAt(0).toUpperCase()}</div><div class="wun"><span class="wig">@</span>${win.username}</div>${win.comment?`<div class="wcmt">"${win.comment}"</div>`:''}</div>`;
     if(sup.length)h+=`<div style="padding:0 20px 4px;"><div class="sw-t">Suplentes</div><div class="sg">${sup.map((s,i)=>`<div class="sc"><span class="sn">${i+1}°</span>@${s.username}</div>`).join('')}</div></div>`;
     wp.innerHTML=h;
   }
@@ -905,7 +910,7 @@ function viewHistEntry(i){
   if(nw>1){
     const podium=winners.slice(0,3),rest=winners.slice(3);
     const sizes=[{av:58,un:22,pad:'20px'},{av:44,un:17,pad:'14px 20px'},{av:36,un:14,pad:'10px 20px'}];
-    h='<div class="wcard"><div class="wcrown">🏆</div><div class="wlbl">'+nw+' Ganadores</div><div class="podium-wrap">';
+    const wcBg=localStorage.getItem('ks-theme')==='dark'?'background:#2a2a2a;border:1px solid #3a3a3a;':'';h='<div class="wcard" style="'+wcBg+'"><div class="wcrown">🏆</div><div class="wlbl">'+nw+' Ganadores</div><div class="podium-wrap">';
     podium.forEach((w,idx)=>{const s=sizes[idx];h+=`<div class="podium-card" style="padding:${s.pad}"><div class="podium-medal">${medals[idx]}</div><div class="winner-av" style="width:${s.av}px;height:${s.av}px;font-size:${s.av*.4|0}px;">${w.username.charAt(0).toUpperCase()}</div><div class="winner-un" style="font-size:${s.un}px;">@${w.username}</div></div>`;});
     h+='</div>';if(rest.length){h+='<div class="rest-list">';rest.forEach((w,idx)=>{h+=`<div class="rest-row"><span class="rest-pos">${idx+4}°</span><div class="rest-av">${w.username.charAt(0).toUpperCase()}</div><span class="rest-un">@${w.username}</span></div>`;});h+='</div>';}
     h+='</div>';
