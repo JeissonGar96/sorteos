@@ -230,6 +230,13 @@ tbody tr.ex td{opacity:.4;}tbody tr.ex .uname{text-decoration:line-through;}
 .sl-list{display:flex;flex-direction:column;gap:5px;padding:4px 0;}
 .sl-item{padding:8px 14px;border-radius:8px;font-size:13.5px;font-weight:600;color:var(--text2);background:var(--surface2);border:1.5px solid transparent;transition:all .08s;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .sl-item.lit{color:#fff;background:var(--accent);border-color:var(--accent);box-shadow:0 0 20px rgba(124,58,237,.55);transform:scale(1.03);font-size:14.5px;}
+.cd-wrap{display:flex;flex-direction:column;align-items:center;gap:14px;padding:16px 0;}
+.cd-circle{position:relative;width:120px;height:120px;}
+.cd-svg{width:120px;height:120px;transform:rotate(-90deg);}
+.cd-track{fill:none;stroke:var(--border);stroke-width:8;}
+.cd-ring{fill:none;stroke:var(--accent);stroke-width:8;stroke-linecap:round;transition:stroke-dashoffset 0.9s linear;}
+.cd-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:42px;font-weight:700;color:var(--accent);}
+.cd-label{font-size:12px;color:var(--text3);font-weight:500;text-align:center;}
 </style>
 </head>
 <body>
@@ -347,7 +354,10 @@ tbody tr.ex td{opacity:.4;}tbody tr.ex .uname{text-decoration:line-through;}
       <div class="tr" style="flex-direction:column;align-items:flex-start;gap:8px;padding-bottom:12px;">
         <div class="tn">Animación</div>
         <div class="anim-grid" id="anim-grid">
-          <div class="anim-opt selected" data-anim="drum" onclick="selectAnim(this)">
+          <div class="anim-opt selected" data-anim="countdown" onclick="selectAnim(this)">
+            <div class="anim-icon">⏱️</div><div class="anim-name">Conteo</div>
+          </div>
+          <div class="anim-opt" data-anim="drum" onclick="selectAnim(this)">
             <div class="anim-icon">🥁</div><div class="anim-name">Tambor</div>
           </div>
           <div class="anim-opt" data-anim="glitch" onclick="selectAnim(this)">
@@ -359,12 +369,13 @@ tbody tr.ex td{opacity:.4;}tbody tr.ex .uname{text-decoration:line-through;}
           <div class="anim-opt" data-anim="wheel" onclick="selectAnim(this)">
             <div class="anim-icon">🎡</div><div class="anim-name">Ruleta</div>
           </div>
-          <div class="anim-opt" data-anim="cards" onclick="selectAnim(this)">
-            <div class="anim-icon">🃏</div><div class="anim-name">Cartas</div>
-          </div>
           <div class="anim-opt" data-anim="none" onclick="selectAnim(this)">
             <div class="anim-icon">⏭️</div><div class="anim-name">Sin anim</div>
           </div>
+        </div>
+        <div id="countdown-cfg" style="display:flex;align-items:center;gap:8px;width:100%;margin-top:2px;">
+          <input type="number" id="countdown-secs" value="10" min="3" max="60" style="width:60px;text-align:center;">
+          <span style="font-size:12px;color:var(--text3);">segundos de conteo</span>
         </div>
       </div>
       <div class="tr">
@@ -651,11 +662,13 @@ function setFw(i,v){
 function clearAll(){parts=[];filt=[];allRows=[];kws=[];filtersApplied=false;renderKws();expandSb();document.getElementById('fi').value='';document.getElementById('dz-t').innerHTML='Sube tu CSV o <strong>haz clic</strong>';document.getElementById('paste').value='';document.getElementById('mlist').value='';updStats();renderTable();document.getElementById('btn-s').disabled=true;notif('Lista limpiada','ok');}
 
 
-let selectedAnim='drum';
+let selectedAnim='countdown';
 function selectAnim(el){
   document.querySelectorAll('.anim-opt').forEach(o=>o.classList.remove('selected'));
   el.classList.add('selected');
   selectedAnim=el.dataset.anim;
+  const cfg=document.getElementById('countdown-cfg');
+  if(cfg) cfg.style.display=selectedAnim==='countdown'?'flex':'none';
 }
 
 function doSorteo(){
@@ -667,7 +680,7 @@ function doSorteo(){
   const winners=sh.slice(0,nwin);
   const win=winners[0];
   win._winners=winners;
-  const sup=sh.slice(nwin,nwin+(ns||0)*nwin);
+  const sup=sh.slice(nwin,nwin+(ns||0));
 
   // Reset modal
   document.getElementById('ov').classList.add('open');
@@ -682,7 +695,7 @@ function doSorteo(){
   document.getElementById('pp').textContent='0%';
   document.getElementById('dr').innerHTML='';
 
-  const animMap={drum:drumAnim,glitch:glitchAnim,spotlight:spotlightAnim,wheel:wheelAnim,cards:cardsAnim,none:()=>{document.getElementById('sp').style.display='none';showWin(win,sup,pool.length,winners);}};
+  const animMap={countdown:countdownAnim,drum:drumAnim,glitch:glitchAnim,spotlight:spotlightAnim,wheel:wheelAnim,none:()=>{document.getElementById('sp').style.display='none';showWin(win,sup,pool.length,winners);}};
   (animMap[selectedAnim]||drumAnim)(pool,win,sup);
 }
 
@@ -701,6 +714,41 @@ function spProgress(pct){
 function spDone(win,sup,pool){
   document.getElementById('sp').style.display='none';
   showWin(win,sup,pool.length,win._winners);
+}
+
+/* ── COUNTDOWN ── */
+function countdownAnim(pool,win,sup){
+  const secs=parseInt(document.getElementById('countdown-secs').value)||10;
+  const winners=win._winners||[win];
+  let remaining=secs;
+  document.getElementById('sp').innerHTML=`
+    <div class="sp-lbl">Sorteando entre <span>${pool.length}</span> participantes</div>
+    <div class="cd-wrap">
+      <div class="cd-circle">
+        <svg class="cd-svg" viewBox="0 0 120 120">
+          <circle class="cd-track" cx="60" cy="60" r="52"/>
+          <circle class="cd-ring" id="cd-ring" cx="60" cy="60" r="52"/>
+        </svg>
+        <div class="cd-num" id="cd-num">${secs}</div>
+      </div>
+      <div class="cd-label">El resultado se revelará en breve</div>
+    </div>`;
+  const circumference=2*Math.PI*52;
+  const ring=document.getElementById('cd-ring');
+  if(ring){ring.style.strokeDasharray=circumference;ring.style.strokeDashoffset=0;}
+  function tick(){
+    remaining--;
+    const numEl=document.getElementById('cd-num');
+    const ringEl=document.getElementById('cd-ring');
+    if(numEl) numEl.textContent=remaining;
+    if(ringEl){
+      const progress=(secs-remaining)/secs;
+      ringEl.style.strokeDashoffset=circumference*progress;
+    }
+    if(remaining>0) setTimeout(tick,1000);
+    else{document.getElementById('sp').style.display='none';showWin(win,sup,pool.length,winners);}
+  }
+  setTimeout(tick,1000);
 }
 
 /* ── TAMBOR ── */
