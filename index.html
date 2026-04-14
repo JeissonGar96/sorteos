@@ -84,7 +84,7 @@ tbody tr.ex td{opacity:.4;}tbody tr.ex .uname{text-decoration:line-through;}
 .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:60px 20px;text-align:center;}
 .ei{font-size:48px;margin-bottom:14px;opacity:.4;}.et{font-size:16px;font-weight:700;color:var(--text2);margin-bottom:5px;}.ed{font-size:12.5px;color:var(--text3);max-width:320px;line-height:1.6;}
 .ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(8px);z-index:1000;align-items:center;justify-content:center;}.ov.open{display:flex;}
-.modal{background:var(--surface);border-radius:18px;width:500px;max-width:95vw;overflow:hidden;box-shadow:var(--shadow-lg);animation:mpop .25s cubic-bezier(.34,1.56,.64,1);border:1px solid var(--border);}
+.modal{background:var(--surface);border-radius:18px;width:500px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow-lg);animation:mpop .25s cubic-bezier(.34,1.56,.64,1);border:1px solid var(--border);}
 @keyframes mpop{from{opacity:0;transform:scale(.9) translateY(10px);}to{opacity:1;transform:scale(1) translateY(0);}}
 .mhd{padding:18px 20px 0;display:flex;align-items:center;justify-content:space-between;}.mhd-t{font-size:15px;font-weight:700;}
 .mcls{width:30px;height:30px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:15px;color:var(--text3);transition:.15s;}.mcls:hover{color:var(--text);}
@@ -668,7 +668,9 @@ function doSorteo(){
   // Reset modal
   document.getElementById('ov').classList.add('open');
   document.getElementById('sp').style.display='block';
-  document.getElementById('wp').classList.remove('on');
+  const wpEl=document.getElementById('wp');
+  wpEl.classList.remove('on');
+  wpEl.innerHTML='';
   document.getElementById('mf').style.display='none';
   document.getElementById('m-t').textContent='Sorteando…';
   document.getElementById('sp-n').textContent=pool.length;
@@ -841,47 +843,49 @@ function cardsAnim(pool,win,sup){
 function showWin(win,sup,tot,winners){
   const nwin=winners?winners.length:1;
   document.getElementById('m-t').textContent=nwin>1?`🎉 ${nwin} Ganadores`:'🎉 ¡Ganador!';
-  document.getElementById('wp').classList.add('on');
+  const wp=document.getElementById('wp');
+  wp.classList.add('on');
+
+  // Always rebuild wp content from scratch to avoid stale DOM refs
+  const medals=['🥇','🥈','🥉'];
 
   if(nwin>1){
-    const wcard=document.querySelector('.wcard');
     const podium=winners.slice(0,Math.min(3,nwin));
     const rest=winners.slice(3);
-    const medals=['🥇','🥈','🥉'];
     const sizes=[{av:58,un:22,pad:'20px'},{av:44,un:17,pad:'14px 20px'},{av:36,un:14,pad:'10px 20px'}];
-    let html='<div class="wcrown">🏆</div><div class="wlbl">'+nwin+' Ganadores</div>';
-    // Podium cards (1st, 2nd, 3rd)
-    html+='<div class="podium-wrap">';
+    let whtml='<div class="wcard"><div class="wcrown">🏆</div><div class="wlbl">'+nwin+' Ganadores</div><div class="podium-wrap">';
     podium.forEach((w,i)=>{
       const s=sizes[i];
-      html+=`<div class="podium-card" style="padding:${s.pad}">
+      whtml+=`<div class="podium-card" style="padding:${s.pad}">
         <div class="podium-medal">${medals[i]}</div>
         <div class="winner-av" style="width:${s.av}px;height:${s.av}px;font-size:${Math.round(s.av*.4)}px;">${w.username.charAt(0).toUpperCase()}</div>
         <div class="winner-un" style="font-size:${s.un}px;">@${w.username}</div>
         ${w.comment?`<div class="winner-cmt">"${w.comment}"</div>`:''}
       </div>`;
     });
-    html+='</div>';
-    // Rest as compact list (4th onwards)
+    whtml+='</div>';
     if(rest.length){
-      html+='<div class="rest-list">';
-      rest.forEach((w,i)=>{
-        html+=`<div class="rest-row"><span class="rest-pos">${i+4}°</span><div class="rest-av">${w.username.charAt(0).toUpperCase()}</div><span class="rest-un">@${w.username}</span></div>`;
-      });
-      html+='</div>';
+      whtml+='<div class="rest-list">';
+      rest.forEach((w,i)=>{ whtml+=`<div class="rest-row"><span class="rest-pos">${i+4}°</span><div class="rest-av">${w.username.charAt(0).toUpperCase()}</div><span class="rest-un">@${w.username}</span></div>`; });
+      whtml+='</div>';
     }
-    wcard.innerHTML=html;
+    whtml+='</div>';
+    // Suplentes
+    if(sup.length) whtml+=`<div id="sup-wrap"><div class="sw-t">Suplentes</div><div class="sg">${sup.map((s,i)=>`<div class="sc"><span class="sn">${i+1}°</span>@${s.username}</div>`).join('')}</div></div>`;
+    wp.innerHTML=whtml;
   } else {
-    document.getElementById('wav').style.display='';
-    document.getElementById('wav').textContent=win.username.charAt(0).toUpperCase();
-    document.getElementById('wlbl').textContent='Ganador';
-    document.getElementById('wn').textContent=win.username;
-    const wc=document.getElementById('wc');
-    if(win.comment){wc.style.display='block';wc.textContent=`"${win.comment}"`;} else wc.style.display='none';
+    // Single winner - always rebuild
+    let whtml=`<div class="wcard">
+      <div class="wcrown">🏆</div>
+      <div class="wlbl">Ganador</div>
+      <div class="wav">${win.username.charAt(0).toUpperCase()}</div>
+      <div class="wun"><span class="wig">@</span>${win.username}</div>
+      ${win.comment?`<div class="wcmt">"${win.comment}"</div>`:''}
+    </div>`;
+    if(sup.length) whtml+=`<div id="sup-wrap"><div class="sw-t">Suplentes</div><div class="sg">${sup.map((s,i)=>`<div class="sc"><span class="sn">${i+1}°</span>@${s.username}</div>`).join('')}</div></div>`;
+    wp.innerHTML=whtml;
   }
 
-  const sw=document.getElementById('sup-wrap'),sg=document.getElementById('sg');
-  if(sup.length){sw.style.display='block';sg.innerHTML=sup.map((s,i)=>`<div class="sc"><span class="sn">${i+1}°</span>@${s.username}</div>`).join('');}else sw.style.display='none';
   document.getElementById('mf').style.display='flex';
   if(document.getElementById('o-hist').checked){
     hist.unshift({date:new Date().toLocaleString('es-EC'),winner:winners?winners.map(w=>w.username).join(', '):win.username,comment:win.comment,suplentes:sup.map(s=>s.username),total:tot});
