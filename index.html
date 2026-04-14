@@ -237,6 +237,23 @@ tbody tr.ex td{opacity:.4;}tbody tr.ex .uname{text-decoration:line-through;}
 .cd-ring{fill:none;stroke:var(--accent);stroke-width:8;stroke-linecap:round;transition:stroke-dashoffset 0.9s linear;}
 .cd-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:42px;font-weight:700;color:var(--accent);}
 .cd-label{font-size:12px;color:var(--text3);font-weight:500;text-align:center;}
+
+/* SKELETON LOADING */
+.skeleton-wrap{padding:0;}
+.sk-row{display:flex;align-items:center;gap:12px;padding:11px 14px;border-bottom:1px solid var(--border);animation:skFade .6s ease infinite alternate;}
+.sk-row:nth-child(even){animation-delay:.15s;}
+.sk-row:nth-child(3n){animation-delay:.3s;}
+@keyframes skFade{from{opacity:.5;}to{opacity:1;}}
+.sk-av{width:32px;height:32px;border-radius:50%;background:var(--border);flex-shrink:0;}
+.sk-lines{display:flex;flex-direction:column;gap:6px;flex:1;}
+.sk-line{height:10px;border-radius:4px;background:var(--border);}
+.sk-line.short{width:40%;}
+.sk-line.med{width:65%;}
+.sk-cmt{width:35%;height:10px;border-radius:4px;background:var(--border);margin-left:auto;}
+
+/* ROW ENTER ANIMATION */
+@keyframes rowIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+tbody tr{animation:rowIn .25s ease both;}
 </style>
 </head>
 <body>
@@ -634,7 +651,7 @@ function renderTable(){
     const oi=filt.indexOf(p);
     const init=p.username.charAt(0).toUpperCase();
     const avHtml=init;
-    html+=`<tr>
+    html+=`<tr style="animation-delay:${vi*0.04}s">
       <td class="hide-sm" style="color:var(--text3);font-family:'JetBrains Mono',monospace;font-size:11px;">${vi+1}</td>
       <td><div class="uc"><div class="av">${avHtml}</div><div class="uname"><span class="uat">@</span>${p.username}</div></div></td>
       ${hasCmt?`<td class="hide-sm"><div class="ctxt" title="${p.comment||''}">${p.comment||'—'}</div></td>`:''}
@@ -684,16 +701,17 @@ function doSorteo(){
 
   // Reset modal
   document.getElementById('ov').classList.add('open');
-  document.getElementById('sp').style.display='block';
+  const spEl=document.getElementById('sp');
+  spEl.style.display='block';
+  spEl.innerHTML=`
+    <div class="sp-lbl">Entre <span id="sp-n">${pool.length}</span> participantes válidos</div>
+    <div class="drum"><div class="db t"></div><div class="db b"></div><div class="dr" id="dr"></div></div>
+    <div class="prog"><div class="pt"><div class="pf" id="pf"></div></div><div class="pl"><span>Procesando...</span><span id="pp">0%</span></div></div>`;
   const wpEl=document.getElementById('wp');
   wpEl.classList.remove('on');
   wpEl.innerHTML='';
   document.getElementById('mf').style.display='none';
   document.getElementById('m-t').textContent='Sorteando…';
-  document.getElementById('sp-n').textContent=pool.length;
-  document.getElementById('pf').style.width='0%';
-  document.getElementById('pp').textContent='0%';
-  document.getElementById('dr').innerHTML='';
 
   const animMap={countdown:countdownAnim,drum:drumAnim,glitch:glitchAnim,spotlight:spotlightAnim,wheel:wheelAnim,none:()=>{document.getElementById('sp').style.display='none';showWin(win,sup,pool.length,winners);}};
   (animMap[selectedAnim]||drumAnim)(pool,win,sup);
